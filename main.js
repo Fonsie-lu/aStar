@@ -1,5 +1,5 @@
-var col = 25;
-var row = 25;
+var col = 50;
+var row = 50;
 var grid = new Array(col);
 
 var openSet = [];
@@ -8,9 +8,10 @@ var start;
 var end;
 var w, h;
 var path = [];
+var finished = false;
 
 function setup() {
-  createCanvas(400, 400);
+  createCanvas(800, 800);
   w = width / col;
   h = height / row;
 
@@ -30,6 +31,8 @@ function setup() {
 
   start = grid[0][0];
   end = grid[col - 1][row - 1];
+  start.wall = false;
+  end.wall = false;
   openSet.push(start);
 }
 
@@ -41,11 +44,19 @@ function Spot(i, j) {
   this.h = 0;
   this.neighbours = [];
   this.previous = undefined;
+  this.wall = false;
+
+  if (random(1) < 0.36) {
+    this.wall = true;
+  }
 
   this.show = function(color) {
-    fill(color);
-    noStroke();
-    rect(this.i * w, this.j * h, w - 1, h - 1);
+    //fill(color);
+    if (this.wall) {
+      fill(0);
+      noStroke();
+      ellipse(this.i * w + w / 2, this.j * h + h / 2, w / 2, h / 2);
+    }
   };
   this.addNeighbour = function(grid) {
     var i = this.i;
@@ -63,6 +74,18 @@ function Spot(i, j) {
     if (j > 0) {
       this.neighbours.push(grid[i][j - 1]);
     }
+    if (i > 0 && j > 0) {
+      this.neighbours.push(grid[i - 1][j - 1]);
+    }
+    if (i < col - 1 && j > 0) {
+      this.neighbours.push(grid[i + 1][j - 1]);
+    }
+    if (i > 0 && j < row - 1) {
+      this.neighbours.push(grid[i - 1][j + 1]);
+    }
+    if (i < col - 1 && j < row - 1) {
+      this.neighbours.push(grid[i + 1][j + 1]);
+    }
   };
 }
 
@@ -75,8 +98,7 @@ function removeFromSet(arr, elem) {
 }
 
 function heuristic(a, b) {
-  var d = abs(a.i - b.i) + abs(a.j - b.j);
-  return d;
+  return dist(a.i, a.j, b.i, b.j);
 }
 
 function draw() {
@@ -92,6 +114,7 @@ function draw() {
     if (current === end) {
       noLoop();
       console.log("Done");
+      finished = true;
     }
     closedSet.push(current);
     removeFromSet(openSet, current);
@@ -100,20 +123,25 @@ function draw() {
     for (var i = 0; i < neighbours.length; i++) {
       var neigbour = neighbours[i];
 
-      if (!closedSet.includes(neigbour)) {
+      if (!closedSet.includes(neigbour) && !neigbour.wall) {
         var tempG = current.g + 1;
+        var newPath = false;
 
         if (openSet.includes(neigbour)) {
           if (tempG < neigbour.g) {
             neigbour.g = tempG;
+            newPath = true;
           }
         } else {
           neigbour.g = tempG;
           openSet.push(neigbour);
+          newPath = true;
         }
-        neigbour.h = heuristic(neigbour, end);
-        neigbour.f = neigbour.g + neigbour.h;
-        neigbour.previous = current;
+        if (newPath) {
+          neigbour.h = heuristic(neigbour, end);
+          neigbour.f = neigbour.g + neigbour.h;
+          neigbour.previous = current;
+        }
       }
     }
   } else {
@@ -122,16 +150,18 @@ function draw() {
     return;
   }
 
+  background(240);
+
   for (let i = 0; i < row; i++) {
     for (let j = 0; j < col; j++) {
       grid[i][j].show(color(200));
     }
   }
   for (let i = 0; i < closedSet.length; i++) {
-    closedSet[i].show(color(100, 0, 0));
+    closedSet[i].show(color(255, 0, 0));
   }
   for (let i = 0; i < openSet.length; i++) {
-    openSet[i].show(color(0, 255, 0));
+    openSet[i].show(color(0, 0, 255));
   }
 
   path = [];
@@ -141,8 +171,20 @@ function draw() {
     path.push(temp.previous);
     temp = temp.previous;
   }
-
-  for (let i = 0; i < path.length; i++) {
-    path[i].show(color(0, 0, 255));
+  if (finished) {
+    path.unshift(end);
   }
+
+  //for (let i = 0; i < path.length; i++) {
+  //path[i].show(color(0, 255, 0));
+  //}
+
+  noFill();
+  stroke(100, 0, 100);
+  strokeWeight(w / 2);
+  beginShape();
+  for (let i = 0; i < path.length; i++) {
+    vertex(path[i].i * w + w / 2, path[i].j * h + h / 2);
+  }
+  endShape();
 }
